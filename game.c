@@ -12,12 +12,12 @@
 #define JUMP_VELOCITY 1000
 #define GRAVITY 50
 
-#define MAX_BULLETS 100
+#define MAX_BULLETS 100 //Maximum number of bullets at any time
 #define BULLET_SPEED 1000
 #define BULLET_SIZE 15
-#define MAX_BULLET_FRAMES 60*30 //No of frames a bullet will last on screen
+#define MAX_BULLET_FRAMES 60*30 //No. of frames a bullet will last on screen
 
-float delta;
+float delta; //Delta is the time since last frame was drawn
 
 enum Direction
 {
@@ -56,6 +56,7 @@ struct Block
   bool collidable_sides[4];
 };
 
+//Behavior of diffrent types of blocks
 struct Block block[] = {
     // Air
     {
@@ -104,6 +105,105 @@ struct Bullet
   int vx,vy;
   float frames_since_spawned;
 };
+
+struct Level
+{
+  char name[10];
+  int block_types[LEVEL_HEIGHT][LEVEL_WIDTH];
+};
+
+void display_bullets(struct Bullet *bullet_list);
+void update_bullets(struct Bullet *bullet_list);
+void shoot_bullet(struct Player player,struct Bullet *bullet_list);
+void display_level(struct Level level);
+void player_level_collision(struct Player *player, struct Level level);
+void player_controller(struct Player *player, struct Bullet *bullet_list);
+
+int main()
+{
+  const int screenWidth = SCREEN_WIDTH;
+  const int screenHeight = SCREEN_HEIGHT;
+  InitWindow(screenWidth, screenHeight, "Raylib basic window");
+  SetTargetFPS(60);
+
+  char key;
+
+  Camera2D cam = {0};
+
+  struct Level level1 = {
+      "level1",
+      {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
+
+  struct Player player = {
+      screenWidth / 2,
+      screenHeight / 2,
+      0, 0,
+      GRAVITY,
+      false,
+      LEFT};
+
+  struct Bullet bullet_list[MAX_BULLETS];
+
+  //initialise all bullets as not existing with 0 velocity
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    bullet_list[i].exits = false;
+    bullet_list[i].vx = 0;
+    bullet_list[i].vy = 0;
+  }
+
+  cam.target = (Vector2){player.x, 0};
+  cam.offset = (Vector2){screenWidth / 2, 0};
+  cam.rotation = 0.0f;
+  cam.zoom = 1.0f;
+
+  while (!WindowShouldClose())
+  {
+    delta = GetFrameTime();
+
+    BeginDrawing();
+
+    ClearBackground(RAYWHITE);
+    DrawFPS(20, 20);
+
+    BeginMode2D(cam);
+
+    //Draw Player
+    DrawRectangle(player.x, player.y, 50, 50, PINK);
+
+    //Draw other things
+    display_bullets(bullet_list);
+    display_level(level1);
+
+    // UPDATES
+    update_bullets(bullet_list);
+    player_controller(&player,bullet_list);
+
+    player_level_collision(&player, level1);
+
+    player.vy += player.ay;
+    player.x += player.vx * delta;
+    player.y += player.vy * delta;
+
+    cam.target = (Vector2){player.x, 0};
+
+    EndMode2D();
+    EndDrawing();
+  }
+  CloseWindow();
+  return 0;
+}
 
 void display_bullets(struct Bullet *bullet_list)
 {
@@ -165,12 +265,6 @@ void shoot_bullet(struct Player player,struct Bullet *bullet_list)
     bullet_list[i].y = player.y + BLOCK_SIZE/2;
   }
 }
-
-struct Level
-{
-  char name[10];
-  int block_types[LEVEL_HEIGHT][LEVEL_WIDTH];
-};
 
 void display_level(struct Level level)
 {
@@ -305,89 +399,4 @@ void player_controller(struct Player *player, struct Bullet *bullet_list)
   {
     shoot_bullet(*player,bullet_list);
   }
-}
-
-int main()
-{
-  const int screenWidth = SCREEN_WIDTH;
-  const int screenHeight = SCREEN_HEIGHT;
-  InitWindow(screenWidth, screenHeight, "Raylib basic window");
-  SetTargetFPS(60);
-
-  char key;
-
-  Camera2D cam = {0};
-
-  struct Level level1 = {
-      "level1",
-      {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
-
-  struct Player player = {
-      screenWidth / 2,
-      screenHeight / 2,
-      0, 0,
-      GRAVITY,
-      false,
-      LEFT};
-
-  struct Bullet bullet_list[MAX_BULLETS];
-
-  //initialise all bullets as not existing with 0 velocity
-  for(int i = 0; i < MAX_BULLETS; i++)
-  {
-    bullet_list[i].exits = false;
-    bullet_list[i].vx = 0;
-    bullet_list[i].vy = 0;
-  }
-
-  cam.target = (Vector2){player.x, 0};
-  cam.offset = (Vector2){screenWidth / 2, 0};
-  cam.rotation = 0.0f;
-  cam.zoom = 1.0f;
-
-  while (!WindowShouldClose())
-  {
-
-    delta = GetFrameTime();
-
-    // DrawRectangle(player.x, player.y, 50, 50, PINK);
-    BeginDrawing();
-
-    ClearBackground(RAYWHITE);
-    DrawFPS(20, 20);
-
-    BeginMode2D(cam);
-
-    DrawRectangle(player.x, player.y, 50, 50, PINK);
-    display_bullets(bullet_list);
-    display_level(level1);
-
-    // UPDATES
-    update_bullets(bullet_list);
-    player_controller(&player,bullet_list);
-
-    player_level_collision(&player, level1);
-
-    player.vy += player.ay;
-    player.x += player.vx * delta;
-    player.y += player.vy * delta;
-
-    cam.target = (Vector2){player.x, 0};
-
-    EndMode2D();
-    EndDrawing();
-  }
-  CloseWindow();
-  return 0;
 }
