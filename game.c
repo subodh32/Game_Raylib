@@ -12,6 +12,11 @@
 #define JUMP_VELOCITY 1000
 #define GRAVITY 50
 
+#define MAX_BULLETS 100
+#define BULLET_SPEED 1000
+#define BULLET_SIZE 15
+#define MAX_BULLET_FRAMES 60*30 //No of frames a bullet will last on screen
+
 float delta;
 
 enum Direction
@@ -43,7 +48,7 @@ enum BlockType
 struct Block
 {
   bool visible;
-  bool Collidable;
+  bool bullet_collidable;
   Color color;
   int display_height, display_width;
   int collison_height, collision_width;
@@ -94,19 +99,71 @@ struct Player
 
 struct Bullet
 {
+  bool exits;
   int x,y;
   int vx,vy;
-  float time_since_spawned;
+  float frames_since_spawned;
 };
 
-void update_bullets()
+void display_bullets(struct Bullet *bullet_list)
 {
-  
+  int x,y;
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    if(bullet_list[i].exits)
+    {
+      x = bullet_list[i].x;
+      y = bullet_list[i].y;
+
+      DrawCircle(x,y,BULLET_SIZE,BLACK);
+    }
+  }
 }
 
-void shoot_bullet()
+void update_bullets(struct Bullet *bullet_list)
 {
-  
+  struct Bullet *bullet;
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    bullet = &bullet_list[i];
+
+    if(bullet->exits)
+    {      
+      bullet->x += bullet->vx * delta;
+      bullet->y += bullet->vy * delta;
+
+      bullet->frames_since_spawned += 1;
+
+      if(bullet->x > LEVEL_WIDTH*BLOCK_SIZE || bullet->x < 0
+        || bullet->y > LEVEL_HEIGHT*BLOCK_SIZE || bullet->y < 0
+        || bullet->frames_since_spawned > MAX_BULLET_FRAMES)
+      {
+        bullet->exits = false;
+        bullet->vx = 0;
+        bullet->vy = 0;
+      }
+    }
+  }
+}
+
+void shoot_bullet(struct Player player,struct Bullet *bullet_list)
+{
+  int i = 0;
+  while(i < MAX_BULLETS && bullet_list[i].exits)
+  {
+    i++;
+  }
+
+  if(i < MAX_BULLETS && bullet_list[i].exits == false)
+  {
+    bullet_list[i].exits = true;
+    bullet_list[i].frames_since_spawned =  0;
+
+    bullet_list[i].vx = player.direction * BULLET_SPEED;
+
+    bullet_list[i].x = player.x + BLOCK_SIZE/2;
+    bullet_list[i].y = player.y + BLOCK_SIZE/2;
+  }
 }
 
 struct Level
@@ -218,15 +275,17 @@ void player_level_collision(struct Player *player, struct Level level)
   }
 }
 
-void player_controller(struct Player *player)
+void player_controller(struct Player *player, struct Bullet *bullet_list)
 {
   if (IsKeyDown(KEY_A))
   {
     player->vx = -PLAYER_VELOCITY;
+    player->direction = LEFT;
   }
   else if (IsKeyDown(KEY_D))
   {
     player->vx = PLAYER_VELOCITY;
+    player->direction = RIGHT;
   }
   else
   {
@@ -240,6 +299,11 @@ void player_controller(struct Player *player)
       player->vy = -(JUMP_VELOCITY);
       player->is_jumping = true;
     }
+  }
+
+  if(IsKeyPressed(KEY_ENTER))
+  {
+    shoot_bullet(*player,bullet_list);
   }
 }
 
@@ -277,6 +341,16 @@ int main()
       false,
       LEFT};
 
+  struct Bullet bullet_list[MAX_BULLETS];
+
+  //initialise all bullets as not existing with 0 velocity
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    bullet_list[i].exits = false;
+    bullet_list[i].vx = 0;
+    bullet_list[i].vy = 0;
+  }
+
   cam.target = (Vector2){player.x, 0};
   cam.offset = (Vector2){screenWidth / 2, 0};
   cam.rotation = 0.0f;
@@ -296,10 +370,12 @@ int main()
     BeginMode2D(cam);
 
     DrawRectangle(player.x, player.y, 50, 50, PINK);
+    display_bullets(bullet_list);
     display_level(level1);
 
     // UPDATES
-    player_controller(&player);
+    update_bullets(bullet_list);
+    player_controller(&player,bullet_list);
 
     player_level_collision(&player, level1);
 
