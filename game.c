@@ -81,7 +81,7 @@ struct Block block[] = {
     //Platform
     {
       true,
-      true,
+      false,
       BROWN,
       BLOCK_SIZE/2,BLOCK_SIZE/2,
       BLOCK_SIZE/2,BLOCK_SIZE,
@@ -115,8 +115,11 @@ struct Level
 void display_bullets(struct Bullet *bullet_list);
 void update_bullets(struct Bullet *bullet_list);
 void shoot_bullet(struct Player player,struct Bullet *bullet_list);
+void bullet_level_collision(struct Bullet *bullet_list,struct Level *level);
+
 void display_level(struct Level level);
 void player_level_collision(struct Player *player, struct Level level);
+
 void player_controller(struct Player *player, struct Bullet *bullet_list);
 
 int main()
@@ -145,13 +148,15 @@ int main()
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
 
+  struct Level current_level = level1;
+
   struct Player player = {
       screenWidth / 2,
       screenHeight / 2,
       0, 0,
       GRAVITY,
       false,
-      LEFT};
+      RIGHT};
 
   struct Bullet bullet_list[MAX_BULLETS];
 
@@ -184,13 +189,15 @@ int main()
 
     //Draw other things
     display_bullets(bullet_list);
-    display_level(level1);
+    display_level(current_level);
 
     // UPDATES
     update_bullets(bullet_list);
     player_controller(&player,bullet_list);
 
-    player_level_collision(&player, level1);
+    //Collisions
+    player_level_collision(&player, current_level);
+    bullet_level_collision(bullet_list,&current_level);
 
     player.vy += player.ay;
     player.x += player.vx * delta;
@@ -203,6 +210,29 @@ int main()
   }
   CloseWindow();
   return 0;
+}
+
+void bullet_level_collision(struct Bullet *bullet_list,struct Level *level)
+{
+  enum BlockType type;
+  struct Bullet *bullet;
+
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    bullet = &bullet_list[i];
+
+    if(bullet->exits)
+    {
+      type = level->block_types[bullet->y / BLOCK_SIZE][ bullet->x / BLOCK_SIZE];
+
+      if(block[type].bullet_collidable)
+      {
+        bullet->exits = false;
+        bullet->vx = 0;
+        bullet->vy = 0;
+      }
+    }
+  }
 }
 
 void display_bullets(struct Bullet *bullet_list)
