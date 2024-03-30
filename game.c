@@ -101,6 +101,7 @@ struct BlockBehavior block_behavior[] = {
 
 struct Player
 {
+  int hp;
   int x, y;
   int vx, vy;
   int ay;
@@ -179,12 +180,17 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
 void enemy_level_collision(struct Enemy *enemy,struct Level *level);
 void enemy_shoot_bullet(struct Enemy *enemy,struct Bullet *bullet_list);
 
+void player_bullet_collision(struct Player *player,struct Bullet *bullet_list);
+void enemy_bullet_collision(struct Enemy *enemy,struct Bullet *bullet_list);
+
 int main()
 {
   const int screenWidth = SCREEN_WIDTH;
   const int screenHeight = SCREEN_HEIGHT;
   InitWindow(screenWidth, screenHeight, "Raylib basic window");
   SetTargetFPS(60);
+
+  bool game_over = false;
 
   char key;
 
@@ -209,6 +215,7 @@ int main()
   struct Level current_level = level1;
 
   struct Player player = {
+      PLAYER_MAX_HP,
       screenWidth / 2,
       screenHeight / 2,
       0, 0,
@@ -263,12 +270,23 @@ int main()
 
   while (!WindowShouldClose())
   {
+    if(game_over)
+    {
+      BeginDrawing();
+      ClearBackground(RAYWHITE);
+      DrawText("GAME OVER",SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 - 40,40,RED);
+      EndDrawing();
+
+      continue;
+    }
+
     delta = GetFrameTime();
 
     BeginDrawing();
 
     ClearBackground(RAYWHITE);
     DrawFPS(20, 20);
+    DrawText(TextFormat("Health: %i",player.hp),SCREEN_WIDTH - 200,0,20,RED);
 
     bullet_level_collision(bullet_list,&current_level);
 
@@ -286,6 +304,7 @@ int main()
     // UPDATES
     update_bullets(bullet_list);
     player_controller(&player,bullet_list);
+    player_bullet_collision(&player,bullet_list);
 
     //Collisions
     player_level_collision(&player, current_level);
@@ -303,6 +322,11 @@ int main()
     player.y += player.vy * delta;
 
     cam.target = (Vector2){player.x, 0};
+
+    if(player.hp < 0)
+    {
+      game_over = true;
+    }
 
     EndMode2D();
     EndDrawing();
@@ -501,6 +525,7 @@ void enemy_list_update(struct Enemy *enemy_list,struct Level *level,struct Playe
     {
       enemy_behavior(&enemy_list[i],level,player,bullet_list);
       enemy_update(&enemy_list[i]);
+      enemy_bullet_collision(&enemy_list[i],bullet_list);
       //enemy_level_collision(&enemy_list[i],level);
     }
   }
@@ -525,6 +550,11 @@ void enemy_update(struct Enemy *enemy)
   enemy->y += delta*enemy->vy;
 
   enemy->time_since_event[0] += delta;
+
+  if(enemy->hp <= 0)
+  {
+    enemy->exits = false;
+  }
 }
 
 void bullet_level_collision(struct Bullet *bullet_list,struct Level *level)
@@ -545,6 +575,46 @@ void bullet_level_collision(struct Bullet *bullet_list,struct Level *level)
         bullet->exits = false;
         bullet->vx = 0;
         bullet->vy = 0;
+      }
+    }
+  }
+}
+
+void enemy_bullet_collision(struct Enemy *enemy,struct Bullet *bullet_list)
+{
+  struct Bullet *bullet;
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    bullet = &bullet_list[i];
+
+    if(bullet->exits)
+    {
+      if(bullet->x > enemy->x && bullet->x < enemy->x + enemy_properties[enemy->type].width
+      && bullet->y > enemy->y && bullet->y < enemy->y + enemy_properties[enemy->type].height
+      && bullet->fired_by_player)
+      {
+        bullet->exits = false;
+        enemy->hp -= 1;
+      }
+    }
+  }
+}
+
+void player_bullet_collision(struct Player *player,struct Bullet *bullet_list)
+{
+  struct Bullet *bullet;
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    bullet = &bullet_list[i];
+
+    if(bullet->exits)
+    {
+      if(bullet->x > player->x && bullet->x < player->x + BLOCK_SIZE
+      && bullet->y > player->y && bullet->y < player->y + BLOCK_SIZE
+      && !bullet->fired_by_player)
+      {
+        bullet->exits = false;
+        player->hp -= 1;
       }
     }
   }
