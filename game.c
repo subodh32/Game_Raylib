@@ -17,6 +17,10 @@
 #define BULLET_SIZE 15
 #define MAX_BULLET_FRAMES 60*30 //No. of frames a bullet will last on screen
 
+#define ENEMY_BULLET_COOLDOWN 0.5 //in milliseconds
+
+#define PLAYER_MAX_HP 10
+
 float delta; //Delta is the time since last frame was drawn
 
 struct Box{
@@ -109,6 +113,7 @@ struct Bullet
   int x,y;
   int vx,vy;
   int frames_since_spawned;
+  bool fired_by_player;
 };
 
 struct Level
@@ -118,24 +123,27 @@ struct Level
 };
 
 enum EnemyType{
-  Follower //Walks towards player
+  Gunner //Shoots player
 };
 
 struct EnemyTypeProperties
 {
   struct Color color;
   int width,height;
+  int max_hp;
 }; 
 
 struct EnemyTypeProperties enemy_properties[] = {
   {
     { 230, 41, 55, 255 }, //RED
-    BLOCK_SIZE,BLOCK_SIZE
+    BLOCK_SIZE,BLOCK_SIZE,
+    3
   }
 };
 
 struct Enemy
 {
+  bool exits;
   int hp;
   enum EnemyType type;
 
@@ -145,6 +153,8 @@ struct Enemy
 
   bool is_jumping;
   enum Direction direction;
+
+  float time_since_event[2]; //in general time for any event ex: time since last bullet was shot,time since last jumped
 };
 
 
@@ -164,6 +174,7 @@ void draw_enemy(struct Enemy enemy);
 void enemy_update(struct Enemy *enemy);
 void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *player,struct Bullet *bullet_list);
 void enemy_level_collision(struct Enemy *enemy,struct Level *level);
+void enemy_shoot_bullet(struct Enemy *enemy,struct Bullet *bullet_list);
 
 int main()
 {
@@ -186,7 +197,7 @@ int main()
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0}, 
        {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -213,13 +224,15 @@ int main()
   }
 
   struct Enemy enemy1 = {
+    true,
     100,
-    Follower,
+    Gunner,
     10*BLOCK_SIZE,4*BLOCK_SIZE,
     0,0,
     GRAVITY,
     false,
-    LEFT
+    LEFT,
+    {0,0}
   };
 
   //Camera to follow player
@@ -257,6 +270,7 @@ int main()
     player_level_collision(&player, current_level);
 
     enemy_level_collision(&enemy1,&current_level);
+    enemy_behavior(&enemy1,&level1,&player,bullet_list);
     enemy_update(&enemy1);
 
     player.vy += delta * player.ay;
@@ -277,8 +291,8 @@ void draw_enemy(struct Enemy enemy)
   struct EnemyTypeProperties type;
   switch (enemy.type)
   {
-  case Follower:
-    type = enemy_properties[Follower];
+  case Gunner:
+    type = enemy_properties[Gunner];
     DrawRectangle(enemy.x,enemy.y,type.width,type.height,type.color);
     break;
   
@@ -371,12 +385,95 @@ void enemy_level_collision(struct Enemy *enemy,struct Level *level)
   }
 }
 
+void enemy_shoot_bullet(struct Enemy *enemy,struct Bullet *bullet_list)
+{
+  int i = 0;
+  while(i < MAX_BULLETS && bullet_list[i].exits)
+  {
+    i++;
+  }
+
+  if(i < MAX_BULLETS && bullet_list[i].exits == false)
+  {
+    bullet_list[i].exits = true;
+    bullet_list[i].frames_since_spawned =  0;
+
+    bullet_list[i].vx = enemy->direction * BULLET_SPEED;
+
+    bullet_list[i].x = enemy->x + BLOCK_SIZE/2;
+    bullet_list[i].y = enemy->y + BLOCK_SIZE/2;
+  }
+}
+
+void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *player,struct Bullet *bullet_list)
+{
+  //Line of sight of enemy
+  int point_x,point_y; //point that scans the level for either player or obstacle in line of sight of enemy
+  
+  point_x = enemy->x + BLOCK_SIZE/2;
+  point_y = enemy->y + BLOCK_SIZE/2;
+
+  bool point_intersects_player = point_x > player->x && point_x < (player->x+BLOCK_SIZE)
+                                  && point_y > player->y && point_y < (player->y + BLOCK_SIZE);
+
+  bool point_intersects_level = ( level->block_types[point_y/BLOCK_SIZE][point_y/BLOCK_SIZE] != Air );
+
+  while(point_intersects_player == false
+        && point_intersects_level == false 
+        && point_x > 0 && point_x < (LEVEL_WIDTH - 1)*BLOCK_SIZE
+        && point_y > 0 && point_y < (LEVEL_WIDTH - 1)*BLOCK_SIZE)
+  {
+    bool point_intersects_player = point_x > player->x && point_x < (player->x+BLOCK_SIZE)
+                                  && point_y > player->y && point_y < (player->y + BLOCK_SIZE);
+
+    bool point_intersects_level = ( level->block_types[point_y/BLOCK_SIZE][point_y/BLOCK_SIZE] != Air );
+
+    if (point_intersects_player)
+    {
+      if(enemy->time_since_event[0] > ENEMY_BULLET_COOLDOWN)
+      {
+        DrawCircle(enemy->x,enemy->y,100,BLUE);
+        enemy_shoot_bullet(enemy,bullet_list);
+        enemy->time_since_event[0] = 0;
+      }
+      // if(enemy->time_since_event[0] > 0.04 && enemy->time_since_event[0] < 0.06)
+      // {
+      //   enemy_shoot_bullet(enemy,bullet_list);
+      //   enemy->time_since_event[0] = 0.06;
+      // }
+
+      float time = 0.06;
+      float error = 0.02;
+
+      for(float i = time; i < time*3; i += time)
+      {
+        if(enemy->time_since_event[0] > i - error && enemy->time_since_event[0] < i)
+        {
+          enemy_shoot_bullet(enemy,bullet_list);
+          enemy->time_since_event[0] = i;
+        }
+      }
+
+    }
+
+    point_x += enemy->direction * BLOCK_SIZE;
+  }
+  
+}
+
+void enemy_draw_and_update(struct Enemy *enemy_list,struct Level *level,struct Player *player,struct Bullet *bullet_list)
+{
+  
+}
+
 void enemy_update(struct Enemy *enemy)
 {
   enemy->vy += delta*enemy->ay;
 
   enemy->x += delta*enemy->vx;
   enemy->y += delta*enemy->vy;
+
+  enemy->time_since_event[0] += delta;
 }
 
 void bullet_level_collision(struct Bullet *bullet_list,struct Level *level)
