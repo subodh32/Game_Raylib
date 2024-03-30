@@ -18,6 +18,7 @@
 #define MAX_BULLET_FRAMES 60*30 //No. of frames a bullet will last on screen
 
 #define ENEMY_BULLET_COOLDOWN 0.5 //in milliseconds
+#define MAX_ENEMY 10
 
 #define PLAYER_MAX_HP 10
 
@@ -168,7 +169,9 @@ void player_level_collision(struct Player *player, struct Level level);
 
 void player_controller(struct Player *player, struct Bullet *bullet_list);
 
-void enemy_draw_and_update(struct Enemy *enemy_list,struct Level *level,struct Player *player,struct Bullet *bullet_list);
+void enemy_list_draw(struct Enemy *enemy_list);
+void enemy_list_update(struct Enemy *enemy_list,struct Level *level,struct Player *player,struct Bullet *bullet_list);
+void enemy_list_levelcollisions(struct Enemy *enemy_list,struct Level *level);
 
 void draw_enemy(struct Enemy enemy);
 void enemy_update(struct Enemy *enemy);
@@ -223,17 +226,34 @@ int main()
     bullet_list[i].vy = 0;
   }
 
+  struct Enemy enemy_list[MAX_ENEMY];
+
+  for(int i = 0; i < MAX_ENEMY; i++)
+  {
+    enemy_list[i].exits = false;
+    enemy_list[i].vx = 0;
+    enemy_list[i].vy = 0;
+    enemy_list[i].ay = GRAVITY;
+    enemy_list[i].is_jumping = false;
+    enemy_list[i].direction = LEFT;
+  }
+
   struct Enemy enemy1 = {
     true,
-    100,
+    enemy_properties[Gunner].max_hp,
     Gunner,
+
     10*BLOCK_SIZE,4*BLOCK_SIZE,
     0,0,
     GRAVITY,
+
     false,
     LEFT,
+
     {0,0}
   };
+
+  enemy_list[0] = enemy1; 
 
   //Camera to follow player
   cam.target = (Vector2){player.x, 0};
@@ -256,7 +276,8 @@ int main()
 
     //Draw Player
     DrawRectangle(player.x, player.y, 50, 50, PINK);
-    draw_enemy(enemy1);
+    //draw_enemy(enemy1);
+    enemy_list_draw(enemy_list);
 
     //Draw other things
     display_bullets(bullet_list);
@@ -269,9 +290,13 @@ int main()
     //Collisions
     player_level_collision(&player, current_level);
 
-    enemy_level_collision(&enemy1,&current_level);
-    enemy_behavior(&enemy1,&level1,&player,bullet_list);
-    enemy_update(&enemy1);
+    enemy_list_update(enemy_list,&current_level,&player,bullet_list);
+    enemy_list_levelcollisions(enemy_list,&current_level);
+
+    if(IsKeyPressed(KEY_R))
+    {
+      enemy_list[0].exits = (enemy_list[0].exits) ? false : true;
+    }
 
     player.vy += delta * player.ay;
     player.x += player.vx * delta;
@@ -396,6 +421,7 @@ void enemy_shoot_bullet(struct Enemy *enemy,struct Bullet *bullet_list)
   if(i < MAX_BULLETS && bullet_list[i].exits == false)
   {
     bullet_list[i].exits = true;
+    bullet_list[i].fired_by_player = false;
     bullet_list[i].frames_since_spawned =  0;
 
     bullet_list[i].vx = enemy->direction * BULLET_SPEED;
@@ -436,11 +462,6 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
         enemy_shoot_bullet(enemy,bullet_list);
         enemy->time_since_event[0] = 0;
       }
-      // if(enemy->time_since_event[0] > 0.04 && enemy->time_since_event[0] < 0.06)
-      // {
-      //   enemy_shoot_bullet(enemy,bullet_list);
-      //   enemy->time_since_event[0] = 0.06;
-      // }
 
       float time = 0.06;
       float error = 0.02;
@@ -461,9 +482,39 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
   
 }
 
-void enemy_draw_and_update(struct Enemy *enemy_list,struct Level *level,struct Player *player,struct Bullet *bullet_list)
+void enemy_list_draw(struct Enemy *enemy_list)
 {
-  
+   for(int i = 0; i < MAX_ENEMY; i++)
+  {
+    if(enemy_list[i].exits)
+    {
+      draw_enemy(enemy_list[i]);
+    }
+  }
+}
+
+void enemy_list_update(struct Enemy *enemy_list,struct Level *level,struct Player *player,struct Bullet *bullet_list)
+{
+  for(int i = 0; i < MAX_ENEMY; i++)
+  {
+    if(enemy_list[i].exits)
+    {
+      enemy_behavior(&enemy_list[i],level,player,bullet_list);
+      enemy_update(&enemy_list[i]);
+      //enemy_level_collision(&enemy_list[i],level);
+    }
+  }
+}
+
+void enemy_list_levelcollisions(struct Enemy *enemy_list,struct Level *level)
+{
+  for(int i = 0; i < MAX_ENEMY; i++)
+  {
+    if(enemy_list[i].exits)
+    {
+      enemy_level_collision(&enemy_list[i],level);
+    }
+  }
 }
 
 void enemy_update(struct Enemy *enemy)
@@ -551,6 +602,7 @@ void shoot_bullet(struct Player player,struct Bullet *bullet_list)
   if(i < MAX_BULLETS && bullet_list[i].exits == false)
   {
     bullet_list[i].exits = true;
+    bullet_list[i].fired_by_player = true;
     bullet_list[i].frames_since_spawned =  0;
 
     bullet_list[i].vx = player.direction * BULLET_SPEED;
