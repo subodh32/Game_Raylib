@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <stdio.h>
 
 #define SCREEN_HEIGHT 600
 #define SCREEN_WIDTH 1000
@@ -159,7 +160,6 @@ struct Enemy
   float time_since_event[2]; //in general time for any event ex: time since last bullet was shot,time since last jumped
 };
 
-
 void display_bullets(struct Bullet *bullet_list);
 void update_bullets(struct Bullet *bullet_list);
 void shoot_bullet(struct Player player,struct Bullet *bullet_list);
@@ -183,11 +183,14 @@ void enemy_shoot_bullet(struct Enemy *enemy,struct Bullet *bullet_list);
 void player_bullet_collision(struct Player *player,struct Bullet *bullet_list);
 void enemy_bullet_collision(struct Enemy *enemy,struct Bullet *bullet_list);
 
+void save_game(struct Player player,struct Enemy enemy_list[],struct Level *level);
+void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *level,struct Bullet *bullet_list);
+
 int main()
 {
   const int screenWidth = SCREEN_WIDTH;
   const int screenHeight = SCREEN_HEIGHT;
-  InitWindow(screenWidth, screenHeight, "Raylib basic window");
+  InitWindow(screenWidth, screenHeight, "Game");
   SetTargetFPS(60);
 
   bool game_over = false;
@@ -202,7 +205,7 @@ int main()
       {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
@@ -282,6 +285,15 @@ int main()
 
     delta = GetFrameTime();
 
+    if(IsKeyPressed(KEY_K))
+    {
+      save_game(player,enemy_list,&current_level);
+    }
+    if(IsKeyPressed(KEY_L))
+    {
+      load_game(&player,enemy_list,&current_level,bullet_list);
+    }
+
     BeginDrawing();
 
     ClearBackground(RAYWHITE);
@@ -347,6 +359,78 @@ void draw_enemy(struct Enemy enemy)
   
   default:
     break;
+  }
+}
+
+void save_game(struct Player player,struct Enemy enemy_list[],struct Level *level)
+{
+  FILE *save;
+  char filename[] = "game.sav";
+
+  save = fopen(filename,"w");
+
+  if(save != NULL)
+  {
+    fprintf(save,"%d ",player.hp);
+    fprintf(save,"%d ",player.x);
+    fprintf(save,"%d ",player.y);
+    fprintf(save,"\n");
+
+    for(int i = 0; i < MAX_ENEMY; i++)
+    {
+        fprintf(save,"%d ",enemy_list[i].exits);
+        fprintf(save,"%d ",enemy_list[i].hp);
+        fprintf(save,"%d ",enemy_list[i].type);
+        fprintf(save,"%d ",enemy_list[i].x);
+        fprintf(save,"%d ",enemy_list[i].y);
+        fprintf(save,"\n");
+    }
+  }
+}
+
+void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *level,struct Bullet *bullet_list)
+{
+  FILE *save;
+  char filename[] = "game.sav";
+
+  FILE *debug = fopen("debug.txt","w");
+  int x,y;
+  bool exits;
+  int hp,type;
+
+  save = fopen(filename,"r");
+
+  for(int i = 0; i < MAX_ENEMY; i++)
+  {
+    enemy_list[i].exits = false;
+  }
+
+  if(save != NULL)
+  {
+    fscanf(save,"%d %d %d",&hp,&x,&y);
+
+    player->hp = hp;
+    player->x = x;
+    player->y = y;
+
+    for(int i = 0; i < MAX_ENEMY; i++)
+    {
+      fscanf(save,"%d %d %d %d %d ",&exits,&hp,&type,&x,&y);
+
+      fprintf(debug,"hp: %d",hp);
+      enemy_list[i].exits = exits;
+      enemy_list[i].type = type;
+      enemy_list[i].hp = hp;
+      enemy_list[i].x = x;
+      enemy_list[i].y = y;
+    }
+  }
+
+  for(int i = 0; i < MAX_BULLETS; i++)
+  {
+    bullet_list[i].exits = false;
+    bullet_list[i].vx = 0;
+    bullet_list[i].vy = 0;
   }
 }
 
@@ -508,7 +592,7 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
 
 void enemy_list_draw(struct Enemy *enemy_list)
 {
-   for(int i = 0; i < MAX_ENEMY; i++)
+  for(int i = 0; i < MAX_ENEMY; i++)
   {
     if(enemy_list[i].exits)
     {
