@@ -172,8 +172,8 @@ struct Level
 //an array of struct Level
 struct Level levels[] = {
   {
-      1,
-      SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+      0, //level id
+      SCREEN_WIDTH/2,SCREEN_HEIGHT/2, //player start position
 
       {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -188,7 +188,7 @@ struct Level levels[] = {
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}},
 
-       2, // NO of enemies
+       2, // No. of enemies
 
        {
         {
@@ -205,6 +205,7 @@ struct Level levels[] = {
     
         {0,0}
         },
+
         {
         true,
         1,
@@ -223,8 +224,8 @@ struct Level levels[] = {
   },
 
   {
-      2,
-      SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+      1, //level id
+      SCREEN_WIDTH/2,SCREEN_HEIGHT/2, //player start position
 
       {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -240,6 +241,8 @@ struct Level levels[] = {
        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}},
 
        2,
+
+       //Enemies
 
        {
         {
@@ -274,7 +277,7 @@ struct Level levels[] = {
   },
 
   {
-      3,
+      2,
       SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
 
       {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -289,7 +292,8 @@ struct Level levels[] = {
        {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}},
-       1,
+
+       3,
        
        {
         {
@@ -305,7 +309,50 @@ struct Level levels[] = {
         LEFT,
     
         {0,0}
+        },
+        {
+        true,
+        1,
+        Runner,
+    
+        8*BLOCK_SIZE,4*BLOCK_SIZE,
+        0,0,
+        GRAVITY,
+    
+        false,
+        RIGHT,
+    
+        {0,0}
+        },
+        {
+        true,
+        1,
+        Runner,
+    
+        10*BLOCK_SIZE,4*BLOCK_SIZE,
+        0,0,
+        GRAVITY,
+    
+        false,
+        RIGHT,
+    
+        {0,0}
+        },
+        {
+          true,
+        1,
+        Runner,
+    
+        14*BLOCK_SIZE,4*BLOCK_SIZE,
+        0,0,
+        GRAVITY,
+    
+        false,
+        LEFT,
+    
+        {0,0}
         }
+        
        }
   }
 };
@@ -422,16 +469,17 @@ int main()
     //if player is on second last or last block of level change level to next level
     if(player.x > (LEVEL_WIDTH - 2)*BLOCK_SIZE)
     {
-      if(current_level.id >= MAX_LEVELS)
+      if(current_level.id + 1 >= MAX_LEVELS)
       {
         game_won = true;
         continue;
       }
       else{
-        current_level = levels[current_level.id];
+        current_level = levels[current_level.id + 1];
       }
     }
 
+    //if current level is not the same as loaded level then reset player and enemies
     if(current_level.id != loaded_level.id)
     {
       player.x = current_level.player_start_x;
@@ -479,6 +527,7 @@ int main()
 
     //Draw Player
     DrawRectangle(player.x, player.y, 50, 50, PINK);
+    DrawRectangle(player.x + player.direction * BLOCK_SIZE/2, player.y + BLOCK_SIZE/2, 40, 10, BLACK);
     //draw_enemy(enemy1);
     enemy_list_draw(enemy_list);
 
@@ -522,7 +571,6 @@ int main()
 
 void draw_enemy(struct Enemy enemy)
 {
-  //next code should
   struct EnemyTypeProperties type;
   switch (enemy.type)
   {
@@ -594,8 +642,8 @@ void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *leve
     fscanf(save,"%d",&score);
     fscanf(save,"%d %d %d",&hp,&x,&y);
 
-    *level = levels[level_id - 1];
-    *loaded_level = levels[level_id - 1];
+    *level = levels[level_id];
+    *loaded_level = levels[level_id];
 
     player->hp = hp;
     player->x = x;
