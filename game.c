@@ -334,7 +334,7 @@ void player_bullet_collision(struct Player *player,struct Bullet *bullet_list);
 void enemy_bullet_collision(struct Enemy *enemy,struct Bullet *bullet_list);
 
 void save_game(struct Player player,struct Enemy enemy_list[],struct Level *level);
-void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *level,struct Bullet *bullet_list);
+void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *level,struct Level *loaded_level,struct Bullet *bullet_list);
 
 int main()
 {
@@ -463,7 +463,7 @@ int main()
     }
     if(IsKeyPressed(KEY_L))
     {
-      load_game(&player,enemy_list,&current_level,bullet_list);
+      load_game(&player,enemy_list,&current_level,&loaded_level,bullet_list);
     }
 
     BeginDrawing();
@@ -551,6 +551,8 @@ void save_game(struct Player player,struct Enemy enemy_list[],struct Level *leve
 
   if(save != NULL)
   {
+    fprintf(save,"%d ",level->id);
+    fprintf(save,"%d ",score);
     fprintf(save,"%d ",player.hp);
     fprintf(save,"%d ",player.x);
     fprintf(save,"%d ",player.y);
@@ -568,12 +570,13 @@ void save_game(struct Player player,struct Enemy enemy_list[],struct Level *leve
   }
 }
 
-void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *level,struct Bullet *bullet_list)
+void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *level,struct Level *loaded_level,struct Bullet *bullet_list)
 {
   FILE *save;
   char filename[] = "game.sav";
 
   FILE *debug = fopen("debug.txt","w");
+  int level_id;
   int x,y;
   bool exits;
   int hp,type;
@@ -587,7 +590,12 @@ void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *leve
 
   if(save != NULL)
   {
+    fscanf(save,"%d",&level_id);
+    fscanf(save,"%d",&score);
     fscanf(save,"%d %d %d",&hp,&x,&y);
+
+    *level = levels[level_id - 1];
+    *loaded_level = levels[level_id - 1];
 
     player->hp = hp;
     player->x = x;
