@@ -5,7 +5,7 @@
 #define SCREEN_WIDTH 1000
 
 #define LEVEL_HEIGHT 12
-#define LEVEL_WIDTH 20
+#define LEVEL_WIDTH 25
 
 #define BLOCK_SIZE 50
 
@@ -23,12 +23,10 @@
 
 #define PLAYER_MAX_HP 10
 
-float delta; //Delta is the time since last frame was drawn
+#define MAX_LEVELS 2
 
-struct Box{
-  int x,y;
-  int width,height;
-};
+float delta; //Delta is the time since last frame was drawn
+int score;
 
 enum Direction
 {
@@ -94,7 +92,7 @@ struct BlockBehavior block_behavior[] = {
       true,
       false,
       BROWN,
-      BLOCK_SIZE/2,BLOCK_SIZE/2,
+      BLOCK_SIZE/2,BLOCK_SIZE,
       BLOCK_SIZE/2,BLOCK_SIZE,
       {true,false,true,true}
     }
@@ -121,8 +119,48 @@ struct Bullet
 
 struct Level
 {
-  char name[10];
+  int id;
+  int player_start_x, player_start_y;
   int block_types[LEVEL_HEIGHT][LEVEL_WIDTH];
+};
+
+//an array of struct Level
+struct Level levels[] = {
+  {
+      1,
+      SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+
+      {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 2, 2, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 
+       {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+       {0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}}
+  },
+
+  {
+      2,
+      SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+
+      {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 2, 2, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+       {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}}
+  }
 };
 
 enum EnemyType{
@@ -194,33 +232,19 @@ int main()
   SetTargetFPS(60);
 
   bool game_over = false;
+  bool game_won = false;
 
   char key;
 
   Camera2D cam = {0};
 
-  struct Level level1 = {
-      "level1",
-
-      {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0}, 
-       {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
-
+  struct Level level1 = levels[0];
   struct Level current_level = level1;
+  struct Level loaded_level = current_level;
 
   struct Player player = {
       PLAYER_MAX_HP,
-      screenWidth / 2,
-      screenHeight / 2,
+      loaded_level.player_start_x, loaded_level.player_start_y,
       0, 0,
       GRAVITY,
       false,
@@ -236,6 +260,7 @@ int main()
     bullet_list[i].vy = 0;
   }
 
+  score = 0;
   struct Enemy enemy_list[MAX_ENEMY];
 
   for(int i = 0; i < MAX_ENEMY; i++)
@@ -281,6 +306,37 @@ int main()
       EndDrawing();
 
       continue;
+    }
+
+    if(game_won)
+    {
+      BeginDrawing();
+      ClearBackground(RAYWHITE);
+      DrawText("YOU WON",SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 - 40,40,GREEN);
+      EndDrawing();
+
+      continue;
+    }
+
+    //if player is on second last or last block of level change level to next level
+    if(player.x > (LEVEL_WIDTH - 2)*BLOCK_SIZE)
+    {
+      if(current_level.id >= MAX_LEVELS)
+      {
+        game_won = true;
+        continue;
+      }
+      else{
+        current_level = levels[current_level.id];
+      }
+    }
+
+    if(current_level.id != loaded_level.id)
+    {
+      player.x = current_level.player_start_x;
+      player.y = current_level.player_start_y;
+
+      loaded_level = current_level;
     }
 
     delta = GetFrameTime();
@@ -349,6 +405,7 @@ int main()
 
 void draw_enemy(struct Enemy enemy)
 {
+  //next code should
   struct EnemyTypeProperties type;
   switch (enemy.type)
   {
@@ -638,6 +695,7 @@ void enemy_update(struct Enemy *enemy)
   if(enemy->hp <= 0)
   {
     enemy->exits = false;
+    score++;
   }
 }
 
