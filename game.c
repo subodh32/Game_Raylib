@@ -24,7 +24,7 @@
 
 #define PLAYER_MAX_HP 10
 
-#define MAX_LEVELS 3
+#define MAX_LEVELS 4
 
 float delta; //Delta is the time since last frame was drawn
 int score;
@@ -354,7 +354,64 @@ struct Level levels[] = {
         }
         
        }
+  },
+
+  {
+      3,
+      SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+
+      {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 2, 2, 0, 0, 1, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}},
+
+      3,
+
+
+  {   {
+      true,
+      1,
+      Runner,
+      8*BLOCK_SIZE,4*BLOCK_SIZE,
+      0,0,
+      GRAVITY,
+      false,
+      RIGHT,
+      {0,0}
+      },
+      {
+      true,
+      1,
+      Runner,
+      10*BLOCK_SIZE,4*BLOCK_SIZE,
+      0,0,
+      GRAVITY,
+      false,
+      RIGHT,
+      {0,0}
+      },
+      {
+      true,
+      1,
+      Runner,
+      14*BLOCK_SIZE,4*BLOCK_SIZE,
+      0,0,
+      GRAVITY,
+      false,
+      RIGHT,
+      {0,0}
+      }
+      }
   }
+
 };
 
 void display_bullets(struct Bullet *bullet_list);
@@ -467,7 +524,7 @@ int main()
     }
 
     //if player is on second last or last block of level change level to next level
-    if(player.x > (LEVEL_WIDTH - 2)*BLOCK_SIZE)
+    if(player.x + BLOCK_SIZE/2 > (LEVEL_WIDTH - 2)*BLOCK_SIZE)
     {
       if(current_level.id + 1 >= MAX_LEVELS)
       {
@@ -505,6 +562,7 @@ int main()
 
     delta = GetFrameTime();
 
+    //save and load game
     if(IsKeyPressed(KEY_K))
     {
       save_game(player,enemy_list,&current_level);
@@ -528,7 +586,6 @@ int main()
     //Draw Player
     DrawRectangle(player.x, player.y, 50, 50, PINK);
     DrawRectangle(player.x + player.direction * BLOCK_SIZE/2, player.y + BLOCK_SIZE/2, 40, 10, BLACK);
-    //draw_enemy(enemy1);
     enemy_list_draw(enemy_list);
 
     //Draw other things
@@ -542,14 +599,8 @@ int main()
 
     //Collisions
     player_level_collision(&player, current_level);
-
     enemy_list_update(enemy_list,&current_level,&player,bullet_list);
     enemy_list_levelcollisions(enemy_list,&current_level);
-
-    if(IsKeyPressed(KEY_R))
-    {
-      enemy_list[0].exits = (enemy_list[0].exits) ? false : true;
-    }
 
     player.vy += delta * player.ay;
     player.x += player.vx * delta;
