@@ -18,12 +18,13 @@
 #define BULLET_SIZE 15
 #define MAX_BULLET_FRAMES 60*30 //No. of frames a bullet will last on screen
 
-#define ENEMY_BULLET_COOLDOWN 0.5 //in milliseconds
+#define ENEMY_BULLET_COOLDOWN 0.5 //in seconds
+#define ENEMY_VELOCITY 500
 #define MAX_ENEMY 10
 
 #define PLAYER_MAX_HP 10
 
-#define MAX_LEVELS 2
+#define MAX_LEVELS 3
 
 float delta; //Delta is the time since last frame was drawn
 int score;
@@ -117,12 +118,56 @@ struct Bullet
   bool fired_by_player;
 };
 
+enum EnemyType{
+  Gunner, //Shoots player
+  Runner //Runs towards player
+};
+
+struct EnemyTypeProperties
+{
+  struct Color color;
+  int width,height;
+  int max_hp;
+}; 
+
+struct EnemyTypeProperties enemy_properties[] = {
+  {
+    { 230, 41, 55, 255 }, //RED
+    BLOCK_SIZE,BLOCK_SIZE,
+    3
+  },
+  {
+    { 41, 128, 230, 255 }, //BLUE
+    BLOCK_SIZE,BLOCK_SIZE,
+    1
+  }
+};
+
+struct Enemy
+{
+  bool exits;
+  int hp;
+  enum EnemyType type;
+
+  int x, y;
+  int vx, vy;
+  int ay;
+
+  bool is_jumping;
+  enum Direction direction;
+
+  float time_since_event[2]; //in general time for any event ex: time since last bullet was shot,time since last jumped
+};
+
 struct Level
 {
   int id;
   int player_start_x, player_start_y;
   int block_types[LEVEL_HEIGHT][LEVEL_WIDTH];
+  int total_enemies;
+  struct Enemy enemies[MAX_ENEMY];
 };
+
 
 //an array of struct Level
 struct Level levels[] = {
@@ -141,7 +186,40 @@ struct Level levels[] = {
        {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
        {0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}}
+       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}},
+
+       2, // NO of enemies
+
+       {
+        {
+        true,
+        3,
+        Gunner,
+    
+        10*BLOCK_SIZE,4*BLOCK_SIZE,
+        0,0,
+        GRAVITY,
+    
+        false,
+        LEFT,
+    
+        {0,0}
+        },
+        {
+        true,
+        1,
+        Runner,
+    
+        13*BLOCK_SIZE,4*BLOCK_SIZE,
+        0,0,
+        GRAVITY,
+    
+        false,
+        RIGHT,
+    
+        {0,0}
+        }
+       }
   },
 
   {
@@ -152,50 +230,66 @@ struct Level levels[] = {
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 2, 2, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
        {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}},
+
+       2,
+
+       {
+        {
+        true,
+        3,
+        Gunner,
+    
+        6*BLOCK_SIZE,4*BLOCK_SIZE,
+        0,0,
+        GRAVITY,
+    
+        false,
+        LEFT,
+    
+        {0,0}
+        },
+        {
+        true,
+        1,
+        Runner,
+    
+        8*BLOCK_SIZE,4*BLOCK_SIZE,
+        0,0,
+        GRAVITY,
+    
+        false,
+        RIGHT,
+    
+        {0,0}
+        }
+       }
+  },
+
+  {
+      3,
+      SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+
+      {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 2, 2, 0, 0, 1, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+       {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
+       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}}
   }
-};
-
-enum EnemyType{
-  Gunner //Shoots player
-};
-
-struct EnemyTypeProperties
-{
-  struct Color color;
-  int width,height;
-  int max_hp;
-}; 
-
-struct EnemyTypeProperties enemy_properties[] = {
-  {
-    { 230, 41, 55, 255 }, //RED
-    BLOCK_SIZE,BLOCK_SIZE,
-    3
-  }
-};
-
-struct Enemy
-{
-  bool exits;
-  int hp;
-  enum EnemyType type;
-
-  int x, y;
-  int vx, vy;
-  int ay;
-
-  bool is_jumping;
-  enum Direction direction;
-
-  float time_since_event[2]; //in general time for any event ex: time since last bullet was shot,time since last jumped
 };
 
 void display_bullets(struct Bullet *bullet_list);
@@ -273,22 +367,10 @@ int main()
     enemy_list[i].direction = LEFT;
   }
 
-  struct Enemy enemy1 = {
-    true,
-    enemy_properties[Gunner].max_hp,
-    Gunner,
-
-    10*BLOCK_SIZE,4*BLOCK_SIZE,
-    0,0,
-    GRAVITY,
-
-    false,
-    LEFT,
-
-    {0,0}
-  };
-
-  enemy_list[0] = enemy1; 
+  for(int i = 0; i < current_level.total_enemies; i++)
+  {
+    enemy_list[i] = current_level.enemies[i];
+  }
 
   //Camera to follow player
   cam.target = (Vector2){player.x, 0};
@@ -313,6 +395,7 @@ int main()
       BeginDrawing();
       ClearBackground(RAYWHITE);
       DrawText("YOU WON",SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 - 40,40,GREEN);
+      DrawText(TextFormat("Score: %i",score),SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2,40,BLUE);
       EndDrawing();
 
       continue;
@@ -336,6 +419,21 @@ int main()
       player.x = current_level.player_start_x;
       player.y = current_level.player_start_y;
 
+      for(int i = 0; i < MAX_ENEMY; i++)
+      {
+        enemy_list[i].exits = false;
+        enemy_list[i].vx = 0;
+        enemy_list[i].vy = 0;
+        enemy_list[i].ay = GRAVITY;
+        enemy_list[i].is_jumping = false;
+        enemy_list[i].direction = LEFT;
+      }
+
+      for(int i = 0; i < current_level.total_enemies; i++)
+      {
+        enemy_list[i] = current_level.enemies[i];
+      }
+
       loaded_level = current_level;
     }
 
@@ -355,6 +453,7 @@ int main()
     ClearBackground(RAYWHITE);
     DrawFPS(20, 20);
     DrawText(TextFormat("Health: %i",player.hp),SCREEN_WIDTH - 200,0,20,RED);
+    DrawText(TextFormat("Score: %i",score),SCREEN_WIDTH - 500,20,20,BLUE);
 
     bullet_level_collision(bullet_list,&current_level);
 
@@ -412,7 +511,13 @@ void draw_enemy(struct Enemy enemy)
   case Gunner:
     type = enemy_properties[Gunner];
     DrawRectangle(enemy.x,enemy.y,type.width,type.height,type.color);
+    DrawRectangle(enemy.x + enemy.direction * type.width/2,enemy.y + type.height/2,40,10,BLACK);
     break;
+
+  case Runner:
+    type = enemy_properties[Runner];
+    DrawRectangle(enemy.x,enemy.y,type.width,type.height,type.color);
+    DrawRectangle(enemy.x + enemy.direction * type.width/2,enemy.y + type.height/2,40,10,GRAY);
   
   default:
     break;
@@ -493,7 +598,7 @@ void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *leve
 
 void enemy_level_collision(struct Enemy *enemy,struct Level *level)
 {
-    enum BlockType type_X, type_Y1, type_Y2;
+  enum BlockType type_X, type_Y1, type_Y2;
 
   int collision_X, collision_Y;
   int level_X,level_Y;
@@ -617,32 +722,55 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
     bool point_intersects_player = point_x > player->x && point_x < (player->x+BLOCK_SIZE)
                                   && point_y > player->y && point_y < (player->y + BLOCK_SIZE);
 
-    bool point_intersects_level = ( level->block_types[point_y/BLOCK_SIZE][point_y/BLOCK_SIZE] != Air );
+    bool point_intersects_level = ( level->block_types[point_x/BLOCK_SIZE][point_y/BLOCK_SIZE] != Air );
 
     if (point_intersects_player)
     {
-      if(enemy->time_since_event[0] > ENEMY_BULLET_COOLDOWN)
+
+      if(enemy->type == Gunner)
       {
-        DrawCircle(enemy->x,enemy->y,100,BLUE);
-        enemy_shoot_bullet(enemy,bullet_list);
-        enemy->time_since_event[0] = 0;
+        if(enemy->time_since_event[0] > ENEMY_BULLET_COOLDOWN)
+        {
+          DrawCircle(enemy->x,enemy->y,100,BLUE);
+          enemy_shoot_bullet(enemy,bullet_list);
+          enemy->time_since_event[0] = 0;
+        }
+
+        float time = 0.06;
+        float error = 0.02;
+
+        for(float i = time; i < time*3; i += time)
+        {
+          if(enemy->time_since_event[0] > i - error && enemy->time_since_event[0] < i)
+          {
+            enemy_shoot_bullet(enemy,bullet_list);
+            enemy->time_since_event[0] = i;
+          }
+        } 
       }
 
-      float time = 0.06;
-      float error = 0.02;
-
-      for(float i = time; i < time*3; i += time)
+      if(enemy->type == Runner)
       {
-        if(enemy->time_since_event[0] > i - error && enemy->time_since_event[0] < i)
-        {
-          enemy_shoot_bullet(enemy,bullet_list);
-          enemy->time_since_event[0] = i;
-        }
+        enemy->vx = enemy->direction * ENEMY_VELOCITY;
       }
 
     }
 
     point_x += enemy->direction * BLOCK_SIZE;
+  }
+
+  if(enemy->type == Runner)
+  {
+    //check if enemy intersects player
+    if (enemy->x < player->x + BLOCK_SIZE &&
+      enemy->x + enemy_properties[enemy->type].width > player->x &&
+      enemy->y < player->y + BLOCK_SIZE &&
+      enemy->y + enemy_properties[enemy->type].height > player->y)
+    {
+      player->hp -= 1;
+      enemy->exits = false;
+    }
+    
   }
   
 }
