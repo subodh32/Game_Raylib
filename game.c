@@ -52,7 +52,8 @@ struct Camera
 enum BlockType
 {
   Air,
-  Ground
+  Ground,
+  Platform,
 };
 
 struct BlockBehavior
