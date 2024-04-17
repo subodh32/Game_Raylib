@@ -27,7 +27,7 @@
 #define MAX_LEVELS 4
 
 float delta; //Delta is the time since last frame was drawn
-int score;
+int score,highscore = 0;
 
 enum Direction
 {
@@ -182,8 +182,8 @@ struct Level levels[] = {
        {0, 0, 0, 2, 2, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
        {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-       {0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 
+       {0, 0, 0, 1, 2, 2, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+       {0, 0, 0, 1, 0, 0, 2, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 
        {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
        {0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1},
        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -330,7 +330,7 @@ struct Level levels[] = {
         1,
         Runner,
     
-        10*BLOCK_SIZE,4*BLOCK_SIZE,
+        9*BLOCK_SIZE,4*BLOCK_SIZE,
         0,0,
         GRAVITY,
     
@@ -359,7 +359,7 @@ struct Level levels[] = {
 
   {
       3,
-      SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+      0,SCREEN_HEIGHT/2,
 
       {{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -385,18 +385,18 @@ struct Level levels[] = {
       0,0,
       GRAVITY,
       false,
-      RIGHT,
+      LEFT,
       {0,0}
       },
       {
       true,
       1,
       Runner,
-      10*BLOCK_SIZE,4*BLOCK_SIZE,
+      11*BLOCK_SIZE,4*BLOCK_SIZE,
       0,0,
       GRAVITY,
       false,
-      RIGHT,
+      LEFT,
       {0,0}
       },
       {
@@ -508,18 +508,48 @@ int main()
       BeginDrawing();
       ClearBackground(RAYWHITE);
       DrawText("GAME OVER",SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 - 40,40,RED);
+      DrawText("Press R to restart",SCREEN_WIDTH/2 - 40*2,SCREEN_HEIGHT/2 + 40,15,GREEN);
       EndDrawing();
+
+      if(IsKeyPressed(KEY_R))
+      {
+        current_level = levels[0];
+        loaded_level = levels[1]; // hack to let the game reset first level
+        game_over = false;
+        score = 0;
+
+        player.hp = PLAYER_MAX_HP;
+      }
 
       continue;
     }
 
     if(game_won)
     {
+      if(highscore < score)
+      {
+        highscore = score;
+      }
+
       BeginDrawing();
       ClearBackground(RAYWHITE);
       DrawText("YOU WON",SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 - 40,40,GREEN);
       DrawText(TextFormat("Score: %i",score),SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2,40,BLUE);
+      DrawText(TextFormat("Highscore: %i",highscore),SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 + 40,40,BLUE);
+      //Press R to restart
+      DrawText("Press R to restart",SCREEN_WIDTH/2 - 40*2,SCREEN_HEIGHT/2 + 80,10,GREEN);
       EndDrawing();
+
+      if(IsKeyPressed(KEY_R))
+      {
+        current_level = levels[0];
+        loaded_level = levels[1]; // hack to let the game reset first level
+        game_won = false;
+        score = 0;
+
+        player.hp = PLAYER_MAX_HP;
+        goto load_Level;
+      }
 
       continue;
     }
@@ -536,6 +566,8 @@ int main()
         current_level = levels[current_level.id + 1];
       }
     }
+
+    load_Level:
 
     //if current level is not the same as loaded level then reset player and enemies
     if(current_level.id != loaded_level.id)
@@ -609,9 +641,15 @@ int main()
 
     cam.target = (Vector2){player.x, 0};
 
-    if(player.hp < 0)
+    if(player.hp <= 0)
     {
       game_over = true;
+    }
+    if(player.y > SCREEN_HEIGHT - BLOCK_SIZE)
+    {
+      player.hp--;
+      player.x = current_level.player_start_x;
+      player.y = current_level.player_start_y;
     }
 
     EndMode2D();
@@ -653,6 +691,7 @@ void save_game(struct Player player,struct Enemy enemy_list[],struct Level *leve
   {
     fprintf(save,"%d ",level->id);
     fprintf(save,"%d ",score);
+    fprintf(save,"%d ",highscore);
     fprintf(save,"%d ",player.hp);
     fprintf(save,"%d ",player.x);
     fprintf(save,"%d ",player.y);
@@ -692,6 +731,7 @@ void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *leve
   {
     fscanf(save,"%d",&level_id);
     fscanf(save,"%d",&score);
+    fscanf(save,"%d",&highscore);
     fscanf(save,"%d %d %d",&hp,&x,&y);
 
     *level = levels[level_id];
