@@ -9,24 +9,27 @@
 
 #define BLOCK_SIZE 50
 
-#define PLAYER_VELOCITY 500
-#define JUMP_VELOCITY 700
-#define GRAVITY 2000
-
 #define MAX_BULLETS 50 //Maximum number of bullets at any time
 #define BULLET_SPEED 700
 #define BULLET_SIZE 15
 #define MAX_BULLET_FRAMES 60*30 //No. of frames a bullet will last on screen
 
+//used to calculate the time since last bullet was shot
 #define ENEMY_BULLET_COOLDOWN 0.5 //in seconds
 #define ENEMY_VELOCITY 500
 #define MAX_ENEMY 10
 
+//Player properties
 #define PLAYER_MAX_HP 10
+#define PLAYER_VELOCITY 500
+#define JUMP_VELOCITY 700
+#define GRAVITY 2000
 
 #define MAX_LEVELS 4
 
-float delta; //Delta is the time since last frame was drawn
+//Delta is the time since last frame was drawn
+float delta;
+
 int score,highscore = 0;
 
 enum Direction
@@ -124,6 +127,8 @@ enum EnemyType{
   Runner //Runs towards player
 };
 
+
+//used to define properties of different types of enemies
 struct EnemyTypeProperties
 {
   struct Color color;
@@ -131,6 +136,8 @@ struct EnemyTypeProperties
   int max_hp;
 }; 
 
+
+//properties of different types of enemies
 struct EnemyTypeProperties enemy_properties[] = {
   {
     { 230, 41, 55, 255 }, //RED
@@ -171,6 +178,14 @@ struct Level
 
 
 //an array of struct Level
+/*
+  Each level has:
+  - id
+  - player start position
+  - block types
+  - total enemies
+  - enemies(array of struct Enemy)
+*/
 struct Level levels[] = {
   {
       0, //level id
@@ -480,6 +495,7 @@ int main()
   score = 0;
   struct Enemy enemy_list[MAX_ENEMY];
 
+  //initialise all enemies as not existing with 0 velocity
   for(int i = 0; i < MAX_ENEMY; i++)
   {
     enemy_list[i].exits = false;
@@ -490,6 +506,7 @@ int main()
     enemy_list[i].direction = LEFT;
   }
 
+  //copy enemies from current level to enemy_list
   for(int i = 0; i < current_level.total_enemies; i++)
   {
     enemy_list[i] = current_level.enemies[i];
@@ -619,9 +636,9 @@ int main()
     //Draw Player
     DrawRectangle(player.x, player.y, 50, 50, PINK);
     DrawRectangle(player.x + player.direction * BLOCK_SIZE/2, player.y + BLOCK_SIZE/2, 40, 10, BLACK);
-    enemy_list_draw(enemy_list);
 
     //Draw other things
+    enemy_list_draw(enemy_list);
     display_bullets(bullet_list);
     display_level(current_level);
 
@@ -645,6 +662,8 @@ int main()
     {
       game_over = true;
     }
+
+    //if player is below screen then reset player position to start position and reduce health
     if(player.y > SCREEN_HEIGHT - BLOCK_SIZE)
     {
       player.hp--;
@@ -682,6 +701,13 @@ void draw_enemy(struct Enemy enemy)
 
 void save_game(struct Player player,struct Enemy enemy_list[],struct Level *level)
 {
+
+  /*
+  Save format:
+  level_id score highscore player_hp player_x player_y
+  enemy_exits enemy_hp enemy_type enemy_x enemy_y
+  */
+
   FILE *save;
   char filename[] = "game.sav";
 
@@ -773,6 +799,14 @@ void enemy_level_collision(struct Enemy *enemy,struct Level *level)
   midX = enemy->x + BLOCK_SIZE/2;
   midY = enemy->y + BLOCK_SIZE/2;
 
+  /* 
+    collision_X is the x coordinate of the block that the enemy is colliding with on the x axis
+    collision_Y is the y coordinate of the block that the enemy is colliding with on the y axis
+
+    level_X and level_Y are the x and y coordinates of the block that the enemy is colliding with
+    in terms of level array
+  */
+
   if (enemy->vx > 0)
   {
     collision_X = (enemy->x + BLOCK_SIZE);
@@ -806,6 +840,12 @@ void enemy_level_collision(struct Enemy *enemy,struct Level *level)
     enemy->vy = 0;
     return;
   }
+
+  /*
+    type_X,type_Y1 and type_Y2 are the types of blocks that the enemy is colliding with
+    if the enemy is moving in the x direction then type_X is the block that the enemy is colliding with
+    if the enemy is moving in the y direction then type_Y1 and type_Y2 are the blocks that the enemy is colliding with
+  */
 
   type_X = level->block_types[(enemy->y + BLOCK_SIZE/2) / BLOCK_SIZE][collision_X / BLOCK_SIZE];
 
@@ -849,11 +889,14 @@ void enemy_level_collision(struct Enemy *enemy,struct Level *level)
 void enemy_shoot_bullet(struct Enemy *enemy,struct Bullet *bullet_list)
 {
   int i = 0;
+
+  //check if there is a bullet that is not existing
   while(i < MAX_BULLETS && bullet_list[i].exits)
   {
     i++;
   }
 
+  //if there is a bullet that is not existing then shoot bullet
   if(i < MAX_BULLETS && bullet_list[i].exits == false)
   {
     bullet_list[i].exits = true;
@@ -893,6 +936,7 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
     if (point_intersects_player)
     {
 
+      //if enemy is a gunner then shoot bullet
       if(enemy->type == Gunner)
       {
         if(enemy->time_since_event[0] > ENEMY_BULLET_COOLDOWN)
@@ -903,8 +947,12 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
         }
 
         float time = 0.06;
+
+        //  error is used because time_since_event is a float and it might not be exactly equal to i
+        //  as the time between frames is not constant
         float error = 0.02;
 
+        //shoot bullet at 0.1,0.2 and 0.3 seconds
         for(float i = time; i < time*3; i += time)
         {
           if(enemy->time_since_event[0] > i - error && enemy->time_since_event[0] < i)
@@ -915,6 +963,7 @@ void enemy_behavior(struct Enemy *enemy,struct Level *level,struct Player *playe
         } 
       }
 
+      //if enemy is a runner then move towards player
       if(enemy->type == Runner)
       {
         enemy->vx = enemy->direction * ENEMY_VELOCITY;
@@ -961,7 +1010,6 @@ void enemy_list_update(struct Enemy *enemy_list,struct Level *level,struct Playe
       enemy_behavior(&enemy_list[i],level,player,bullet_list);
       enemy_update(&enemy_list[i]);
       enemy_bullet_collision(&enemy_list[i],bullet_list);
-      //enemy_level_collision(&enemy_list[i],level);
     }
   }
 }
@@ -1085,6 +1133,7 @@ void update_bullets(struct Bullet *bullet_list)
 
       bullet->frames_since_spawned += 1;
 
+      //if bullet is out of bounds or has been alive for too long then set exits to false
       if(bullet->x > LEVEL_WIDTH*BLOCK_SIZE || bullet->x < 0
         || bullet->y > LEVEL_HEIGHT*BLOCK_SIZE || bullet->y < 0
         || bullet->frames_since_spawned > MAX_BULLET_FRAMES)
@@ -1100,11 +1149,14 @@ void update_bullets(struct Bullet *bullet_list)
 void shoot_bullet(struct Player player,struct Bullet *bullet_list)
 {
   int i = 0;
+
+  //check if there is a bullet that is not existing
   while(i < MAX_BULLETS && bullet_list[i].exits)
   {
     i++;
   }
 
+  //if there is a bullet that is not existing then shoot bullet
   if(i < MAX_BULLETS && bullet_list[i].exits == false)
   {
     bullet_list[i].exits = true;
@@ -1216,13 +1268,20 @@ void player_level_collision(struct Player *player, struct Level level)
     block_behavior[type_Y2].collidable_sides[BOTTOM_SIDE]))
   {
     player->y = (level_Y * BLOCK_SIZE) + BLOCK_SIZE - 1;
-    //player->y = (level_Y * BLOCK_SIZE) - 1; for jumpable platforms
     player->vy = 0;
   }
 }
 
 void player_controller(struct Player *player, struct Bullet *bullet_list)
 {
+  /*
+    Player movement:
+    A - move left
+    D - move right
+    SPACE - jump
+    ENTER - shoot bullet
+  */
+
   if (IsKeyDown(KEY_A))
   {
     player->vx = -PLAYER_VELOCITY;
