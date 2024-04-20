@@ -31,6 +31,10 @@
 float delta;
 
 int score,highscore = 0;
+bool a_pressed = false;
+bool d_pressed = false;
+bool space_pressed = false;
+bool enter_pressed = false;
 
 enum Direction
 {
@@ -553,7 +557,6 @@ int main()
       DrawText("YOU WON",SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 - 40,40,GREEN);
       DrawText(TextFormat("Score: %i",score),SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2,40,BLUE);
       DrawText(TextFormat("Highscore: %i",highscore),SCREEN_WIDTH/2 - 40*3,SCREEN_HEIGHT/2 + 40,40,BLUE);
-      //Press R to restart
       DrawText("Press R to restart",SCREEN_WIDTH/2 - 40*2,SCREEN_HEIGHT/2 + 80,10,GREEN);
       EndDrawing();
 
@@ -625,9 +628,6 @@ int main()
     BeginDrawing();
 
     ClearBackground(RAYWHITE);
-    DrawFPS(20, 20);
-    DrawText(TextFormat("Health: %i",player.hp),SCREEN_WIDTH - 200,0,20,RED);
-    DrawText(TextFormat("Score: %i",score),SCREEN_WIDTH - 500,20,20,BLUE);
 
     bullet_level_collision(bullet_list,&current_level);
 
@@ -672,9 +672,29 @@ int main()
     }
 
     EndMode2D();
+
+    //HUD
+    DrawFPS(20, 20);
+    DrawText(TextFormat("Health: %i",player.hp),SCREEN_WIDTH - 200,0,20,RED);
+    DrawText(TextFormat("Score: %i",score),SCREEN_WIDTH - 500,20,20,BLUE);
+
+    //Tooltip for controls
+    if(!a_pressed)
+    DrawText("A - Move Left",20,SCREEN_HEIGHT - 40,20,BLACK);
+
+    if(!d_pressed)
+    DrawText("D - Move Right",20,SCREEN_HEIGHT - 20,20,BLACK);
+
+    if(!space_pressed)
+    DrawText("Space - Jump",SCREEN_WIDTH - 200,SCREEN_HEIGHT - 40,20,BLACK);
+
+    if(!enter_pressed)
+    DrawText("Enter - Shoot",SCREEN_WIDTH - 200,SCREEN_HEIGHT - 20,20,BLACK);
+
     EndDrawing();
   }
   CloseWindow();
+
   return 0;
 }
 
@@ -1238,6 +1258,8 @@ void player_level_collision(struct Player *player, struct Level level)
   type_Y1 = level.block_types[collision_Y / BLOCK_SIZE][(player->x + 1) / BLOCK_SIZE];
   type_Y2 = level.block_types[collision_Y / BLOCK_SIZE][(player->x + BLOCK_SIZE - 1) / BLOCK_SIZE];
 
+  // check if player is colliding with block and set player position to edge of block
+
   if (player->vx > 0 && block_behavior[type_X].collidable_sides[LEFT_SIDE])
   {
     player->x = level_X*BLOCK_SIZE - BLOCK_SIZE;
@@ -1286,11 +1308,15 @@ void player_controller(struct Player *player, struct Bullet *bullet_list)
   {
     player->vx = -PLAYER_VELOCITY;
     player->direction = LEFT;
+
+    a_pressed = true;
   }
   else if (IsKeyDown(KEY_D))
   {
     player->vx = PLAYER_VELOCITY;
     player->direction = RIGHT;
+
+    d_pressed = true;
   }
   else
   {
@@ -1303,11 +1329,15 @@ void player_controller(struct Player *player, struct Bullet *bullet_list)
     {
       player->vy = -(JUMP_VELOCITY);
       player->is_jumping = true;
+
+      space_pressed = true;
     }
   }
 
   if(IsKeyPressed(KEY_ENTER))
   {
     shoot_bullet(*player,bullet_list);
+
+    enter_pressed = true;
   }
 }
