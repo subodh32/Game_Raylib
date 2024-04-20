@@ -31,6 +31,12 @@
 float delta;
 
 int score,highscore = 0;
+
+/*
+  to show the player control hints
+  checks if the key is pressed
+  if not then display the hint
+*/
 bool a_pressed = false;
 bool d_pressed = false;
 bool space_pressed = false;
@@ -58,9 +64,9 @@ struct Camera
 
 enum BlockType
 {
-  Air,
-  Ground,
-  Platform,
+  Air, //not collidable
+  Ground, //collidable from all sides
+  Platform, //not collidable from bottom
 };
 
 struct BlockBehavior
@@ -78,12 +84,12 @@ struct BlockBehavior
 struct BlockBehavior block_behavior[] = {
     // Air
     {
-      false,
-      false,
-      WHITE,
-      0,0,
-      0,0,
-      {false, false, false, false}
+      false, //visible
+      false, //bullet_collidable
+      WHITE, //color
+      0,0, //display_height,display_width
+      0,0, //collision_height,collision_width
+      {false, false, false, false} //collidable_sides
     },
 
     // Ground
@@ -145,8 +151,8 @@ struct EnemyTypeProperties
 struct EnemyTypeProperties enemy_properties[] = {
   {
     { 230, 41, 55, 255 }, //RED
-    BLOCK_SIZE,BLOCK_SIZE,
-    3
+    BLOCK_SIZE,BLOCK_SIZE, //width,height
+    3 //max_hp
   },
   {
     { 41, 128, 230, 255 }, //BLUE
