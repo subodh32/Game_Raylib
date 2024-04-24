@@ -12,7 +12,7 @@
 #define MAX_BULLETS 50 //Maximum number of bullets at any time
 #define BULLET_SPEED 700
 #define BULLET_SIZE 15
-#define MAX_BULLET_FRAMES 60*30 //No. of frames a bullet will last on screen
+#define MAX_BULLET_FRAMES 60*30 //No. of frames a bullet will last on screen(bullet will last 30s)
 
 //used to calculate the time since last bullet was shot
 #define ENEMY_BULLET_COOLDOWN 0.5 //in seconds
@@ -530,6 +530,7 @@ int main()
 
   while (!WindowShouldClose())
   {
+    //game over screen
     if(game_over)
     {
       BeginDrawing();
@@ -538,6 +539,7 @@ int main()
       DrawText("Press R to restart",SCREEN_WIDTH/2 - 40*2,SCREEN_HEIGHT/2 + 40,15,GREEN);
       EndDrawing();
 
+      //restart game
       if(IsKeyPressed(KEY_R))
       {
         current_level = levels[0];
@@ -551,6 +553,7 @@ int main()
       continue;
     }
 
+    //game won screen
     if(game_won)
     {
       if(highscore < score)
@@ -566,6 +569,7 @@ int main()
       DrawText("Press R to restart",SCREEN_WIDTH/2 - 40*2,SCREEN_HEIGHT/2 + 80,10,GREEN);
       EndDrawing();
 
+      //restart game
       if(IsKeyPressed(KEY_R))
       {
         current_level = levels[0];
@@ -635,8 +639,6 @@ int main()
 
     ClearBackground(RAYWHITE);
 
-    bullet_level_collision(bullet_list,&current_level);
-
     BeginMode2D(cam);
 
     //Draw Player
@@ -657,6 +659,7 @@ int main()
     player_level_collision(&player, current_level);
     enemy_list_update(enemy_list,&current_level,&player,bullet_list);
     enemy_list_levelcollisions(enemy_list,&current_level);
+    bullet_level_collision(bullet_list,&current_level);
 
     player.vy += delta * player.ay;
     player.x += player.vx * delta;
@@ -774,6 +777,7 @@ void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *leve
 
   save = fopen(filename,"r");
 
+  //kills all the enemies of the level
   for(int i = 0; i < MAX_ENEMY; i++)
   {
     enemy_list[i].exits = false;
@@ -806,6 +810,7 @@ void load_game(struct Player *player,struct Enemy *enemy_list,struct Level *leve
     }
   }
 
+  //kill all the current bullets
   for(int i = 0; i < MAX_BULLETS; i++)
   {
     bullet_list[i].exits = false;
@@ -1053,10 +1058,14 @@ void enemy_list_levelcollisions(struct Enemy *enemy_list,struct Level *level)
 
 void enemy_update(struct Enemy *enemy)
 {
+  //update velocity and position of enemy
   enemy->vy += delta*enemy->ay;
 
   enemy->x += delta*enemy->vx;
   enemy->y += delta*enemy->vy;
+
+  //time_since_event[0] is used for shooting bullet
+  //it stores the time since the last bullet was shot
 
   enemy->time_since_event[0] += delta;
 
